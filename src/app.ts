@@ -1,5 +1,6 @@
 import express, { Express } from 'express';
 import path from 'path';
+import 'dotenv/config';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
