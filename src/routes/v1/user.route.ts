@@ -57,6 +57,14 @@ router.post(
   multer(multerConfig).single('file'),
   UserController.avatarUpload,
 );
+router.post(
+  '/resend-otp',
+  UserController.resendOtp,
+);
+router.post(
+  '/confirm-otp',
+  UserController.confirmOtp,
+);
 
 router
   .route('/admin/users')

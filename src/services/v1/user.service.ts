@@ -353,6 +353,55 @@ const deleteUser = async (id: Types.ObjectId) => {
   return user;
 };
 
+const resendOtp = async (email: string) => {
+  // find user by his email
+  const user = await UserRepository.getOneByQuery({ email });
+
+  // throw error if user don't exists
+  if (!user) {
+    throw new ErrorHandler('user not found!', HttpCode.NOT_FOUND);
+  }
+
+  const otp = generateRandom6Digits();
+  await UserRepository.edit(user?._id, { otp });
+
+  // email subject
+  const subject = 'Vérifiez votre compte pour réinitialiser votre mot de passe';
+
+  // email body
+  const body = `
+    <h1>Votre code de validation est :</h1>
+    <p>${otp}</p>
+  `;
+
+  // check if email sent successfully
+  await sendMail(user?.email, subject, body);
+
+  // return data
+  return { email: user?.email };
+};
+
+const confirmOtp = async (email: string, otp: string) => {
+  // find user by his email
+  const user = await UserRepository.getOneByQuery({ email });
+
+  // throw error if user don't exists
+  if (!user) {
+    throw new ErrorHandler('user not found!', HttpCode.NOT_FOUND);
+  }
+
+  // check if otp matches
+  if (user.otp !== otp) {
+    throw new ErrorHandler('Invalid OTP!', HttpCode.BAD_REQUEST);
+  }
+
+  // remove otp from user
+  await UserRepository.edit(user?._id, { otp: null });
+
+  // return data
+  return { email: user?.email };
+};
+
 export default {
   login,
   register,
@@ -368,4 +417,6 @@ export default {
   createUser,
   updateUser,
   deleteUser,
+  resendOtp,
+  confirmOtp,
 };

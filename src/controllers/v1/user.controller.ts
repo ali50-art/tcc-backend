@@ -217,6 +217,22 @@ const deleteUser: RequestHandler = AsyncHandler(
   },
 );
 
+const resendOtp: RequestHandler = AsyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { email } = req?.body;
+    await UserService.resendOtp(email.trim().toLowerCase());
+    res.status(HttpCode.OK).json({ success: true, message: 'OTP resent successfully', data: null });
+  },
+);
+
+const confirmOtp: RequestHandler = AsyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { email, otp } = req?.body;
+    await UserService.confirmOtp(email.trim().toLowerCase(), otp);
+    res.status(HttpCode.OK).json({ success: true, message: 'OTP confirmed successfully', data: null });
+  },
+);
+
 export default {
   login,
   register,
@@ -233,4 +249,6 @@ export default {
   createUser,
   updateUser,
   deleteUser,
+  resendOtp,
+  confirmOtp,
 };
