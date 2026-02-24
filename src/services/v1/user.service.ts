@@ -144,12 +144,10 @@ const forgotPassword = async (email: string) => {
   return { email: user?.email };
 };
 
-const resetPassword = async (resetToken: string, password: string, confirmPassword: string) => {
-  // decode the reset token
-  const decoded = JwtHelper.ExtractToken(resetToken, TokenEnum.reset);
+const resetPassword = async (email:string, password: string, confirmPassword: string) => {
 
   // find user by his id
-  const user = await UserRepository.getOneByQuery({ _id: decoded?.id });
+  const user = await UserRepository.getOneByQuery({ email});
 
   // throw error if user not found
   if (!user) {

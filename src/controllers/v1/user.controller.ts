@@ -94,8 +94,8 @@ const forgotPassword: RequestHandler = AsyncHandler(
 // @access  Public
 const resetPassword: RequestHandler = AsyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { token, password, confirmPassword } = req.body;
-    const result = await UserService.resetPassword(token, password, confirmPassword);
+    const { email,password, confirmPassword } = req.body;
+    const result = await UserService.resetPassword(email,password, confirmPassword);
     res.status(HttpCode.OK).json({
       success: true,
       message: 'Password Successfully Updated',
