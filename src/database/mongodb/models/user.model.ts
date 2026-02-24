@@ -18,6 +18,7 @@ export default interface IUser extends Document {
   hireDate?: Date;
   contractType?: string;
   cv?: string;
+  otp?: string;
   manager?: Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
@@ -72,6 +73,10 @@ const schema = new Schema<IUser>(
     },
     cv:{
       type: String,
+    },
+    otp: {
+      type: String,
+      default: null,
     },
     manager: {
       type: Schema.Types.ObjectId,

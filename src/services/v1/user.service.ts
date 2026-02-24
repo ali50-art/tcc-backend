@@ -101,7 +101,11 @@ const refreshToken = async (refreshToken: string) => {
   // return data
   return token;
 };
-
+function generateRandom6Digits() {
+  // Generate a number between 0 and 999999, then pad with zeros if needed
+  const randomNumber = Math.floor(Math.random() * 1000000);
+  return String(randomNumber).padStart(6, '0');
+}
 const forgotPassword = async (email: string) => {
   // find user by his email
   const user = await UserRepository.getOneByQuery({ email });
@@ -123,14 +127,14 @@ const forgotPassword = async (email: string) => {
   let resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
   // email subject
-  const subject = 'Verify your account';
+  const subject = 'Vérifiez votre compte pour réinitialiser votre mot de passe';
 
+  const otp = generateRandom6Digits();
+  await UserRepository.edit(user?._id, { otp });
   // email body
   const body = `
-		<h1>Your password reset token is as follow:</h1>
-		<a href="${resetUrl}">${resetUrl}</a>
-		<hr />
-	  <p>If you have not requested this email, then ignore it.</p>
+		<h1>Votre code de validation est :</h1>
+	  <p>${otp}</p>
 	`;
 
   // check if email sent successfully
