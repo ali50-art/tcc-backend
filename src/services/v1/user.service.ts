@@ -182,7 +182,7 @@ const getUserProfile = async (id: Types.ObjectId) => {
   return user;
 };
 
-const updateProfile = async (id: Types.ObjectId, name: string, email: string) => {
+const updateProfile = async (id: Types.ObjectId, data:any) => {
   // get user by his id
   const user = await UserRepository.getOneByQuery({ _id: id });
 
@@ -191,20 +191,8 @@ const updateProfile = async (id: Types.ObjectId, name: string, email: string) =>
     throw new ErrorHandler('user not found!', HttpCode.NOT_FOUND);
   }
 
-  // set the new name to user object if new name not undefined
-  if (name) user.set('name', name);
-
-  // set the new email  to user object if new email not undefined
-  if (email) user.set('email', email);
-
-  // crate user object
-  const updatedUser = {
-    name,
-    email,
-  };
-
   // update user
-  await UserRepository.edit(id, updatedUser);
+  await UserRepository.edit(id, data);
 
   // remove password from user
   user.password = undefined;
