@@ -12,8 +12,9 @@ export enum EnvironmentEnum {
 
 export enum RolesEnum {
   admin = 'admin',
-  manager = 'manager',
-  user = 'user',
+  rh = 'rh',
+  candidate = 'candidate',
+  employee = 'employee',
 }
 
 export enum LeaveStatusEnum {

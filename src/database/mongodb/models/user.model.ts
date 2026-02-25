@@ -14,7 +14,11 @@ export default interface IUser extends Document {
   department?: string;
   phone?: string;
   address?: string;
+  birthDate?:string;
+  currentJob?:string;
+  experience?:string;
   matricule?: string;
+  city?:string;
   hireDate?: Date;
   contractType?: string;
   cv?: string;
@@ -35,18 +39,30 @@ const schema = new Schema<IUser>(
       required: true,
       unique: true,
     },
+    birthDate:{
+      type: String,
+    },
+    city:{
+      type: String, 
+    },
+    currentJob:{
+      type: String,
+    },
+    experience:{
+      type: String,
+    },
     password: {
       type: String,
       required: true,
     },
     avatar: {
       type: String,
-      default: 'default-user.png',
+      default: 'https://lesultan-uploads.s3.eu-west-3.amazonaws.com/images-removebg-preview.png',
     },
     role: {
       type: String,
       enum: Object.values(RolesEnum),
-      default: RolesEnum.user,
+      default: RolesEnum.candidate,
       required: true,
     },
     department: {

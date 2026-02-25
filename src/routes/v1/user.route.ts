@@ -39,7 +39,6 @@ router.get('/profile', Authorization.Authenticated, UserController.getProfile);
 router.put(
   '/profile-update',
   Authorization.Authenticated,
-  validator(UserValidator.updateProfile),
   UserController.updateProfile,
 );
 
