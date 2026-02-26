@@ -51,8 +51,8 @@ router.put(
 
 router.post(
   '/avatar-upload',
-  Authorization.Authenticated,
   multer(multerConfig).single('file'),
+  Authorization.Authenticated,
   UserController.avatarUpload,
 );
 router.post(

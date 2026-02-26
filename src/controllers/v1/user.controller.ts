@@ -147,10 +147,8 @@ const updateUserPassword: RequestHandler = AsyncHandler(
 // @access  Private
 const avatarUpload: RequestHandler = AsyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    console.log("hello");
-    
     const file:any = req.file;
-    console.log("file : " , file);
+    console.log("file : ",file);
     
     const avatar= file ? file.location : "";
     const result = await UserService.avatarUpload(req?.user?.id, avatar);
