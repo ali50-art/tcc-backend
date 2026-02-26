@@ -31,7 +31,8 @@ const login: RequestHandler = AsyncHandler(async (req: Request, res: Response): 
 // @access  Public
 const register: RequestHandler = AsyncHandler(
   async (req: Request, res: Response): Promise<void> => { 
-    const cv= req.file ? req.file.filename : "";
+    const file:any = req.file;
+    const cv= file ? file.location : "";
     const { name, email,phone, password } = req?.body;
     const result = await UserService.register(name, email.trim().toLowerCase(), password, cv, phone);
     res.cookie('refreshToken', result.refreshToken, {
@@ -145,7 +146,9 @@ const updateUserPassword: RequestHandler = AsyncHandler(
 // @access  Private
 const avatarUpload: RequestHandler = AsyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const result = await UserService.avatarUpload(req?.user?.id, req?.file?.filename);
+    const file:any = req.file;
+    const avatar= file ? file.location : "";
+    const result = await UserService.avatarUpload(req?.user?.id, avatar);
     res
       .status(HttpCode.OK)
       .json({ success: true, message: 'image uploaded successfully', data: result });
