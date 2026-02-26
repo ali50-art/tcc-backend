@@ -10,6 +10,7 @@ import {
 } from '../../constants/constants';
 import { HttpCode } from '../../utils/httpCode';
 import { Types } from 'mongoose';
+import { log } from 'console';
 
 // @desc    Auth user & get token
 // @route   POST /api/login
@@ -147,6 +148,8 @@ const updateUserPassword: RequestHandler = AsyncHandler(
 const avatarUpload: RequestHandler = AsyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const file:any = req.file;
+    console.log("file : " , file);
+    
     const avatar= file ? file.location : "";
     const result = await UserService.avatarUpload(req?.user?.id, avatar);
     res
