@@ -15,6 +15,14 @@ export interface DashboardData {
     city?: string;
     avatar: string;
   };
+  recentLeaves: Array<{
+    id: string;
+    type: string;
+    startDate: Date;
+    endDate: Date;
+    status: string;
+    reason?: string;
+  }>;
   leaveBalance: {
     totalDays: number;
     usedDays: number;
@@ -82,11 +90,12 @@ class EmployeeService {
       throw new Error('User not found');
     }
 
-    const [leaveBalance, tasks, notifications, news] = await Promise.all([
+    const [leaveBalance, tasks, notifications, news, recentLeaves] = await Promise.all([
       this.getLeaveBalance(userId),
       this.getEmployeeTasks(userId),
       this.getRecentNotifications(userId),
       this.getCompanyNews(),
+      this.getRecentLeaves(userId),
     ]);
 
     return {
@@ -103,6 +112,7 @@ class EmployeeService {
       tasks,
       notifications,
       companyNews: news,
+      recentLeaves,
     };
   }
 
@@ -154,6 +164,24 @@ class EmployeeService {
       dueDate: todo.dueDate,
       priority: todo.slug === 'urgent' ? 'high' : 'medium',
       completed: todo.isConpleted || false,
+    }));
+  }
+
+  // Get recent leave history for employee
+  async getRecentLeaves(userId: string) {
+    const leaves = await Leave.find({
+      user: new Types.ObjectId(userId),
+    })
+      .sort({ startDate: -1 })
+      .limit(5);
+
+    return leaves.map((leave: any) => ({
+      id: leave._id.toString(),
+      type: leave.type,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      status: leave.status,
+      reason: leave.reason,
     }));
   }
 
