@@ -3,7 +3,7 @@ import UserRepository from '../../database/mongodb/repositories/user.repository'
 import NotificationRepository from '../../database/mongodb/repositories/notification.repository';
 import { ErrorHandler } from '../../utils/errorHandler';
 import { HttpCode } from '../../utils/httpCode';
-import { ExpenseStatusEnum } from '../../constants/constants';
+import { ExpenseStatusEnum, RolesEnum } from '../../constants/constants';
 import { Types } from 'mongoose';
 
 const getMyExpenses = async (userId: Types.ObjectId, page: number, pageSize: number) => {
@@ -16,6 +16,28 @@ const getExpenseById = async (id: Types.ObjectId) => {
   const expense = await ExpenseRepository.getById(id);
   if (!expense) throw new ErrorHandler('Expense not found', HttpCode.NOT_FOUND);
   return expense;
+};
+
+const getExpenseForDownload = async (id: Types.ObjectId, requester: any) => {
+  const expense: any = await ExpenseRepository.getById(id);
+  if (!expense) throw new ErrorHandler('Expense not found', HttpCode.NOT_FOUND);
+
+  // Owner can download
+  const expenseUserId = String(expense?.user?._id || expense?.user);
+  const requesterId = String(requester?._id || requester?.id);
+  if (expenseUserId === requesterId) return expense;
+
+  // Admin can download
+  if (requester?.role === RolesEnum.admin) return expense;
+
+  // Manager can download for their direct reports
+  if (requester?.role === RolesEnum.manager) {
+    const expenseUser = await UserRepository.getById(new Types.ObjectId(expenseUserId));
+    const managerId = expenseUser?.manager ? String(expenseUser.manager) : '';
+    if (managerId && managerId === requesterId) return expense;
+  }
+
+  throw new ErrorHandler('Forbidden', HttpCode.FORBIDDEN);
 };
 
 const createExpense = async (userId: Types.ObjectId, data: any) => {
@@ -112,6 +134,7 @@ const rejectExpense = async (id: Types.ObjectId, managerId: Types.ObjectId, reas
 export default {
   getMyExpenses,
   getExpenseById,
+  getExpenseForDownload,
   createExpense,
   getExpenseSummary,
   getPendingExpenses,

@@ -4,6 +4,7 @@ import AsyncHandler from 'express-async-handler';
 import { DEFAULT_CURRENT_PAGE, DEFAULT_PAGE_SIZE } from '../../constants/constants';
 import { HttpCode } from '../../utils/httpCode';
 import { Types } from 'mongoose';
+import PDFDocument from 'pdfkit';
 
 // @desc    Get my expenses
 // @route   GET /api/expenses
@@ -67,6 +68,56 @@ const rejectExpense: RequestHandler = AsyncHandler(async (req: Request, res: Res
   res.status(HttpCode.OK).json({ success: true, message: 'Expense rejected', data: result });
 });
 
+// @desc    Download expense as PDF
+// @route   GET /api/expenses/:id/pdf
+// @access  Private (owner/manager/admin)
+const downloadExpensePdf: RequestHandler = AsyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const expense: any = await ExpenseService.getExpenseForDownload(new Types.ObjectId(req.params.id), req.user);
+
+  const expenseId = String(expense?._id || req.params.id);
+  const fileName = `expense_${expenseId}.pdf`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  doc.pipe(res);
+
+  const title = 'Note de frais';
+  doc.fontSize(20).text(title, { align: 'left' });
+  doc.moveDown(0.5);
+  doc.fontSize(10).fillColor('#666').text(`Référence: ${expenseId}`);
+  doc.fillColor('#000');
+  doc.moveDown();
+
+  const employeeName = expense?.user?.name || '';
+  const employeeEmail = expense?.user?.email || '';
+  doc.fontSize(12).text(`Employé: ${employeeName}`);
+  if (employeeEmail) doc.fontSize(10).fillColor('#666').text(employeeEmail);
+  doc.fillColor('#000');
+  doc.moveDown();
+
+  const fmtDate = (d: any) => (d ? new Date(d).toLocaleDateString('fr-FR') : '');
+  const amount = typeof expense?.amount === 'number' ? expense.amount : Number(expense?.amount || 0);
+  const amountStr = amount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+
+  doc.fontSize(12).text(`Type: ${expense?.type || '-'}`);
+  doc.text(`Description: ${expense?.description || '-'}`);
+  doc.text(`Date: ${fmtDate(expense?.date) || '-'}`);
+  doc.text(`Montant: ${amountStr}`);
+  doc.text(`Statut: ${expense?.status || '-'}`);
+  if (expense?.rejectionReason) doc.text(`Motif de refus: ${expense.rejectionReason}`);
+  if (expense?.approvedBy?.name) doc.text(`Validé par: ${expense.approvedBy.name}`);
+  doc.moveDown();
+
+  doc
+    .fontSize(10)
+    .fillColor('#666')
+    .text('Ce document est généré automatiquement par TCC CenterDesk.', { align: 'left' });
+
+  doc.end();
+});
+
 export default {
   getMyExpenses,
   getExpenseById,
@@ -75,6 +126,7 @@ export default {
   getPendingExpenses,
   approveExpense,
   rejectExpense,
+  downloadExpensePdf,
 };
 
 

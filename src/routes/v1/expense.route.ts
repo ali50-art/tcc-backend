@@ -14,6 +14,7 @@ import { RolesEnum } from '../../constants/constants';
 router.get('/expenses', Authorization.Authenticated, ExpenseController.getMyExpenses);
 router.get('/expenses/summary', Authorization.Authenticated, ExpenseController.getExpenseSummary);
 router.get('/expenses/:id', Authorization.Authenticated, ExpenseController.getExpenseById);
+router.get('/expenses/:id/pdf', Authorization.Authenticated, ExpenseController.downloadExpensePdf);
 router.post(
   '/expenses',
   Authorization.Authenticated,

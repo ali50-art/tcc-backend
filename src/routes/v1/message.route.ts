@@ -9,6 +9,7 @@ router.get('/messages/conversations', Authorization.Authenticated, MessageContro
 router.post('/messages/conversations', Authorization.Authenticated, MessageController.createConversation);
 router.get('/messages/:conversationId', Authorization.Authenticated, MessageController.getMessages);
 router.post('/messages/:conversationId', Authorization.Authenticated, MessageController.sendMessage);
+router.post('/messages/:conversationId/image', Authorization.Authenticated, MessageController.sendImage);
 
 export default router;
 

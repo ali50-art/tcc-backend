@@ -8,6 +8,11 @@ export default interface IMessage extends Document {
   conversation: object;
   sender: object;
   content: string;
+  attachments?: {
+    url: string;
+    mimeType?: string;
+    size?: number;
+  }[];
   isRead: boolean;
   readBy: object[];
   createdAt?: Date;
@@ -30,6 +35,13 @@ const schema = new Schema<IMessage>(
       type: Schema.Types.String,
       required: true,
     },
+    attachments: [
+      {
+        url: { type: Schema.Types.String, required: true },
+        mimeType: { type: Schema.Types.String, default: '' },
+        size: { type: Schema.Types.Number, default: 0 },
+      },
+    ],
     isRead: {
       type: Schema.Types.Boolean,
       default: false,

@@ -24,6 +24,11 @@ export default interface IUser extends Document {
   cv?: string;
   otp?: string;
   manager?: Types.ObjectId;
+  location?: string;
+  totalLeaveDays?: number;
+  usedLeaveDays?: number;
+  isActive?: boolean;
+  lastLoginAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -97,6 +102,25 @@ const schema = new Schema<IUser>(
     manager: {
       type: Schema.Types.ObjectId,
       ref: USER_DOCUMENT_NAME,
+    },
+    location: {
+      type: String,
+      default: '',
+    },
+    totalLeaveDays: {
+      type: Number,
+      default: 25,
+    },
+    usedLeaveDays: {
+      type: Number,
+      default: 0,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLoginAt: {
+      type: Date,
     },
   },
   {

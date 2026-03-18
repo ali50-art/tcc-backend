@@ -34,7 +34,31 @@ const sendMessage = async (conversationId: Types.ObjectId, senderId: Types.Objec
   // Update last message in conversation
   await ConversationRepository.edit(conversationId, { lastMessage: message._id });
 
-  return message;
+  const populated = await MessageRepository.getById((message as any)._id);
+  return populated || message;
+};
+
+const sendMessageWithAttachment = async (
+  conversationId: Types.ObjectId,
+  senderId: Types.ObjectId,
+  content: string,
+  attachment: { url: string; mimeType?: string; size?: number },
+) => {
+  const conversation = await ConversationRepository.getById(conversationId);
+  if (!conversation) throw new ErrorHandler('Conversation not found', HttpCode.NOT_FOUND);
+
+  const message = await MessageRepository.create({
+    conversation: conversationId,
+    sender: senderId,
+    content: content || '',
+    attachments: [attachment],
+    readBy: [senderId],
+  });
+
+  await ConversationRepository.edit(conversationId, { lastMessage: (message as any)._id });
+
+  const populated = await MessageRepository.getById((message as any)._id);
+  return populated || message;
 };
 
 const createConversation = async (userId: Types.ObjectId, participantId: Types.ObjectId, isGroup: boolean, name?: string) => {
@@ -57,6 +81,7 @@ export default {
   getConversations,
   getMessages,
   sendMessage,
+  sendMessageWithAttachment,
   createConversation,
 };
 

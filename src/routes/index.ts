@@ -7,9 +7,10 @@ import documentRoutes from './v1/document.route';
 import notificationRoutes from './v1/notification.route';
 import messageRoutes from './v1/message.route';
 import adminRoutes from './v1/admin.route';
+import employeeRoutes from './v1/employee.route';
 
 const router = express.Router();
 
-router.use('/', userRoutes, todoRoutes, leaveRoutes, expenseRoutes, documentRoutes, notificationRoutes, messageRoutes, adminRoutes);
+router.use('/', userRoutes, todoRoutes, leaveRoutes, expenseRoutes, documentRoutes, notificationRoutes, messageRoutes, adminRoutes, employeeRoutes);
 
 export default router;
