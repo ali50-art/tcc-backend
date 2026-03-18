@@ -5,6 +5,7 @@ import UserRepository from '../../database/mongodb/repositories/user.repository'
 import { Types } from 'mongoose';
 import ITodo from '../../database/mongodb/models/todo.model';
 import { sendMail } from '../../utils/sendMail';
+import { RolesEnum } from '../../constants/constants';
 
 const getAll = async (userId: Types.ObjectId, name: string, page: number, pageSize: number) => {
   // create options object to filter data
@@ -123,15 +124,54 @@ const edit = async (userId: Types.ObjectId, id: Types.ObjectId, item: ITodo) => 
   };
 
   // get item by options
-  const todo = await TodoRepository.getOneByQuery(options);
+  const todo = await TodoRepository.getOneByQuery(options, '+user +createdBy', 'user createdBy');
 
   // throw error if item not found
   if (!todo) {
     throw new ErrorHandler('todo not found!', HttpCode.NOT_FOUND);
   }
 
+  const wasCompleted = Boolean((todo as any).isConpleted);
+  const willBeCompleted = typeof (item as any).isConpleted === 'boolean' ? Boolean((item as any).isConpleted) : wasCompleted;
+
   // edit item
   const updatedTodo = await TodoRepository.edit(id, item);
+
+  // If employee just completed the task, notify the admin who created it
+  if (!wasCompleted && willBeCompleted) {
+    const employee = (todo as any).user as any;
+    const admins = await UserRepository.getByQuery({ role: RolesEnum.admin });
+    const emails = Array.from(
+      new Set(
+        (admins || [])
+          .map((a: any) => String(a?.email || '').trim().toLowerCase())
+          .filter((e: string) => !!e),
+      ),
+    );
+
+    if (emails.length > 0) {
+      const due = (todo as any)?.dueDate ? new Date((todo as any).dueDate).toLocaleDateString('fr-FR') : '';
+      const slug = (todo as any)?.slug || 'normal';
+      const subject = `Tâche terminée (${slug.toUpperCase()})`;
+      const body = `
+        <div style="font-family:Arial, sans-serif; line-height:1.5">
+          <h2 style="margin:0 0 12px 0">Tâche terminée</h2>
+          <p>L’employé <strong>${employee?.name || ''}</strong> a terminé une tâche :</p>
+          <ul>
+            <li><strong>Titre:</strong> ${(todo as any).name}</li>
+            <li><strong>Priorité:</strong> ${slug}</li>
+            ${due ? `<li><strong>Date limite:</strong> ${due}</li>` : ''}
+          </ul>
+          <p>Statut : <strong>DONE</strong></p>
+        </div>
+      `;
+      for (const email of emails) {
+        try {
+          sendMail(email, subject, body);
+        } catch {}
+      }
+    }
+  }
 
   // return data
   return updatedTodo;
