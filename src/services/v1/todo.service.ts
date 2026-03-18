@@ -4,6 +4,7 @@ import { HttpCode } from '../../utils/httpCode';
 import UserRepository from '../../database/mongodb/repositories/user.repository';
 import { Types } from 'mongoose';
 import ITodo from '../../database/mongodb/models/todo.model';
+import { sendMail } from '../../utils/sendMail';
 
 const getAll = async (userId: Types.ObjectId, name: string, page: number, pageSize: number) => {
   // create options object to filter data
@@ -60,6 +61,31 @@ const createForUserAdmin = async (userId: Types.ObjectId, item: ITodo) => {
   if (!item.slug) (item as any).slug = 'normal';
 
   const createdTodo = await TodoRepository.create(item);
+
+  // Email notification to employee
+  if (user.email) {
+    const due = (createdTodo as any)?.dueDate ? new Date((createdTodo as any).dueDate).toLocaleDateString('fr-FR') : '';
+    const slug = (createdTodo as any)?.slug || 'normal';
+    const subject = `Nouvelle tâche (${slug.toUpperCase()})`;
+    const body = `
+      <div style="font-family:Arial, sans-serif; line-height:1.5">
+        <h2 style="margin:0 0 12px 0">Nouvelle tâche assignée</h2>
+        <p>Bonjour <strong>${user.name}</strong>,</p>
+        <p>Une nouvelle tâche vous a été assignée dans <strong>TCC CenterDesk</strong> :</p>
+        <ul>
+          <li><strong>Titre:</strong> ${(createdTodo as any).name}</li>
+          <li><strong>Priorité:</strong> ${slug}</li>
+          ${due ? `<li><strong>Date limite:</strong> ${due}</li>` : ''}
+          ${(createdTodo as any).description ? `<li><strong>Description:</strong> ${(createdTodo as any).description}</li>` : ''}
+        </ul>
+        <p>Connectez-vous à l’application pour la consulter.</p>
+      </div>
+    `;
+    try {
+      sendMail(user.email, subject, body);
+    } catch {}
+  }
+
   return createdTodo;
 };
 
