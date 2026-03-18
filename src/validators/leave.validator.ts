@@ -11,9 +11,14 @@ const rejectLeaveSchema = Joi.object({
   reason: Joi.string().required(),
 });
 
+const approveLeaveSchema = Joi.object({
+  message: Joi.string().allow('').optional(),
+});
+
 export default {
   createLeaveSchema,
   rejectLeaveSchema,
+  approveLeaveSchema,
 };
 
 

@@ -54,7 +54,8 @@ const getPendingLeaves: RequestHandler = AsyncHandler(async (req: Request, res: 
 // @route   PUT /api/manager/leaves/:id/approve
 // @access  Private/Manager
 const approveLeave: RequestHandler = AsyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const result = await LeaveService.approveLeave(new Types.ObjectId(req.params.id), req.user.id);
+  const { message } = req.body;
+  const result = await LeaveService.approveLeave(new Types.ObjectId(req.params.id), req.user.id, message);
   res.status(HttpCode.OK).json({ success: true, message: 'Leave approved', data: result });
 });
 

@@ -32,6 +32,7 @@ router.put(
   '/manager/leaves/:id/approve',
   Authorization.Authenticated,
   AuthorizeRole.AuthorizeRole([RolesEnum.manager, RolesEnum.admin]),
+  validator(LeaveValidator.approveLeaveSchema),
   LeaveController.approveLeave,
 );
 router.put(

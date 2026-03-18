@@ -3,8 +3,9 @@ import UserRepository from '../../database/mongodb/repositories/user.repository'
 import NotificationRepository from '../../database/mongodb/repositories/notification.repository';
 import { ErrorHandler } from '../../utils/errorHandler';
 import { HttpCode } from '../../utils/httpCode';
-import { LeaveStatusEnum } from '../../constants/constants';
+import { LeaveStatusEnum, RolesEnum } from '../../constants/constants';
 import { Types } from 'mongoose';
+import { sendMail } from '../../utils/sendMail';
 
 const getMyLeaves = async (userId: Types.ObjectId, page: number, pageSize: number) => {
   const options = { page, limit: pageSize };
@@ -20,8 +21,42 @@ const getLeaveById = async (id: Types.ObjectId) => {
 
 const createLeave = async (userId: Types.ObjectId, data: any) => {
   const leave = await LeaveRepository.create({ ...data, user: userId, status: LeaveStatusEnum.pending });
-  // Create notification for manager
   const user = await UserRepository.getById(userId);
+
+  // Email + notify admins (many admins)
+  const admins = await UserRepository.getByQuery({ role: RolesEnum.admin });
+  const adminEmails = Array.from(
+    new Set(
+      (admins || [])
+        .map((a: any) => String(a?.email || '').trim().toLowerCase())
+        .filter((e: string) => !!e),
+    ),
+  );
+  if (adminEmails.length > 0) {
+    const start = data?.startDate ? new Date(data.startDate).toLocaleString('fr-FR') : '';
+    const end = data?.endDate ? new Date(data.endDate).toLocaleString('fr-FR') : '';
+    const subject = `Nouvelle demande de congé (${data?.type || 'leave'})`;
+    const body = `
+      <div style="font-family:Arial, sans-serif; line-height:1.5">
+        <h2 style="margin:0 0 12px 0">Nouvelle demande de congé</h2>
+        <p>L’employé <strong>${user?.name || ''}</strong> a soumis une demande.</p>
+        <ul>
+          <li><strong>Type:</strong> ${data?.type || ''}</li>
+          <li><strong>Du:</strong> ${start}</li>
+          <li><strong>Au:</strong> ${end}</li>
+          ${data?.reason ? `<li><strong>Motif:</strong> ${data.reason}</li>` : ''}
+        </ul>
+        <p>Connectez-vous à l’application pour traiter la demande.</p>
+      </div>
+    `;
+    for (const email of adminEmails) {
+      try {
+        sendMail(email, subject, body);
+      } catch {}
+    }
+  }
+
+  // Create notification for manager
   if (user?.manager) {
     await NotificationRepository.create({
       user: user.manager,
@@ -63,13 +98,18 @@ const getLeaveBalance = async (userId: Types.ObjectId) => {
 
 // Manager functions
 const getPendingLeaves = async (managerId: Types.ObjectId) => {
+  const requester = await UserRepository.getById(managerId);
+  if (requester?.role === RolesEnum.admin) {
+    return await LeaveRepository.getByQuery({ status: LeaveStatusEnum.pending });
+  }
+
   const teamMembers = await UserRepository.getByQuery({ manager: managerId });
   const teamIds = teamMembers.map((m: any) => m._id);
   const leaves = await LeaveRepository.getByQuery({ user: { $in: teamIds }, status: LeaveStatusEnum.pending });
   return leaves;
 };
 
-const approveLeave = async (id: Types.ObjectId, managerId: Types.ObjectId) => {
+const approveLeave = async (id: Types.ObjectId, managerId: Types.ObjectId, message?: string) => {
   const leave = await LeaveRepository.getById(id);
   if (!leave) throw new ErrorHandler('Leave not found', HttpCode.NOT_FOUND);
   if (leave.status !== LeaveStatusEnum.pending) throw new ErrorHandler('Leave already processed', HttpCode.BAD_REQUEST);
@@ -77,15 +117,40 @@ const approveLeave = async (id: Types.ObjectId, managerId: Types.ObjectId) => {
   const updated = await LeaveRepository.edit(id, {
     status: LeaveStatusEnum.approved,
     approvedBy: managerId,
+    decisionMessage: message || '',
   });
 
   await NotificationRepository.create({
     user: (leave as any).user._id || leave.user,
     title: 'Congé approuvé',
-    body: 'Votre demande de congé a été approuvée',
+    body: message ? `Votre demande de congé a été approuvée: ${message}` : 'Votre demande de congé a été approuvée',
     type: 'leave',
     data: { leaveId: id },
   });
+
+  // Email employee
+  const employee = (leave as any).user;
+  if (employee?.email) {
+    const start = (leave as any)?.startDate ? new Date((leave as any).startDate).toLocaleString('fr-FR') : '';
+    const end = (leave as any)?.endDate ? new Date((leave as any).endDate).toLocaleString('fr-FR') : '';
+    const subject = 'Votre demande de congé a été approuvée';
+    const body = `
+      <div style="font-family:Arial, sans-serif; line-height:1.5">
+        <h2 style="margin:0 0 12px 0">Demande approuvée</h2>
+        <p>Bonjour <strong>${employee?.name || ''}</strong>,</p>
+        <p>Votre demande de congé a été <strong>approuvée</strong>.</p>
+        <ul>
+          <li><strong>Type:</strong> ${(leave as any).type}</li>
+          <li><strong>Du:</strong> ${start}</li>
+          <li><strong>Au:</strong> ${end}</li>
+          ${message ? `<li><strong>Message:</strong> ${message}</li>` : ''}
+        </ul>
+      </div>
+    `;
+    try {
+      sendMail(employee.email, subject, body);
+    } catch {}
+  }
 
   return updated;
 };
@@ -99,6 +164,7 @@ const rejectLeave = async (id: Types.ObjectId, managerId: Types.ObjectId, reason
     status: LeaveStatusEnum.rejected,
     approvedBy: managerId,
     rejectionReason: reason,
+    decisionMessage: reason,
   });
 
   await NotificationRepository.create({
@@ -108,6 +174,30 @@ const rejectLeave = async (id: Types.ObjectId, managerId: Types.ObjectId, reason
     type: 'leave',
     data: { leaveId: id },
   });
+
+  // Email employee
+  const employee = (leave as any).user;
+  if (employee?.email) {
+    const start = (leave as any)?.startDate ? new Date((leave as any).startDate).toLocaleString('fr-FR') : '';
+    const end = (leave as any)?.endDate ? new Date((leave as any).endDate).toLocaleString('fr-FR') : '';
+    const subject = 'Votre demande de congé a été refusée';
+    const body = `
+      <div style="font-family:Arial, sans-serif; line-height:1.5">
+        <h2 style="margin:0 0 12px 0">Demande refusée</h2>
+        <p>Bonjour <strong>${employee?.name || ''}</strong>,</p>
+        <p>Votre demande de congé a été <strong>refusée</strong>.</p>
+        <ul>
+          <li><strong>Type:</strong> ${(leave as any).type}</li>
+          <li><strong>Du:</strong> ${start}</li>
+          <li><strong>Au:</strong> ${end}</li>
+          <li><strong>Message:</strong> ${reason}</li>
+        </ul>
+      </div>
+    `;
+    try {
+      sendMail(employee.email, subject, body);
+    } catch {}
+  }
 
   return updated;
 };

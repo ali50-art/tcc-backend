@@ -14,6 +14,7 @@ export default interface ILeave extends Document {
   status: string;
   approvedBy?: object;
   rejectionReason?: string;
+  decisionMessage?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -54,6 +55,10 @@ const schema = new Schema<ILeave>(
       ref: 'User',
     },
     rejectionReason: {
+      type: Schema.Types.String,
+      default: '',
+    },
+    decisionMessage: {
       type: Schema.Types.String,
       default: '',
     },
