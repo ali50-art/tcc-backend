@@ -52,11 +52,12 @@ const create = async (userId: Types.ObjectId, item: ITodo) => {
   return createdTodo;
 };
 
-const createForUserAdmin = async (userId: Types.ObjectId, item: ITodo) => {
+const createForUserAdmin = async (creatorId: Types.ObjectId, userId: Types.ObjectId, item: ITodo) => {
   const user = await UserRepository.getById(userId);
   if (!user) throw new ErrorHandler('user not found!', HttpCode.NOT_FOUND);
 
   item.user = userId;
+  (item as any).createdBy = creatorId;
   if (typeof item.isConpleted !== 'boolean') item.isConpleted = false;
   if (!item.slug) (item as any).slug = 'normal';
 
@@ -87,6 +88,16 @@ const createForUserAdmin = async (userId: Types.ObjectId, item: ITodo) => {
   }
 
   return createdTodo;
+};
+
+const getMyCreatedTodosByDueRangeAdmin = async (creatorId: Types.ObjectId, from: Date, to: Date) => {
+  // include tasks without dueDate? for calendar we focus on dueDate set
+  const query = {
+    createdBy: creatorId,
+    dueDate: { $gte: from, $lte: to },
+  };
+  const todos = await TodoRepository.getByQuery(query, '+user +createdBy', 'user createdBy');
+  return todos;
 };
 
 const edit = async (userId: Types.ObjectId, id: Types.ObjectId, item: ITodo) => {
@@ -231,4 +242,5 @@ export default {
   editAdmin,
   removeAdmin,
   getAllUserTodosAdmin,
+  getMyCreatedTodosByDueRangeAdmin,
 };

@@ -11,6 +11,7 @@ export default interface ITodo extends Document {
   dueDate?: Date;
   isConpleted?: boolean;
   user: object;
+  createdBy?: object;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -37,6 +38,11 @@ const schema = new Schema<ITodo>(
       default: false,
     },
     user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      select: false,
+    },
+    createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       select: false,

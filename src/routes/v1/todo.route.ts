@@ -52,6 +52,13 @@ router
     TodoController.getAllAdmin,
   );
 
+router.get(
+  '/admin/todos/calendar',
+  Authorization.Authenticated,
+  AuthorizeRole.AuthorizeRole([RolesEnum.admin]),
+  TodoController.getMyCreatedTodosCalendar,
+);
+
 router
   .route('/admin/todos/:id')
   .get(

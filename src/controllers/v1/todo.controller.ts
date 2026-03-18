@@ -145,12 +145,29 @@ const getAllUserTodosAdmin: RequestHandler = AsyncHandler(
 const createUserTodoAdmin: RequestHandler = AsyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { id } = req?.params;
-    const result = await TodoService.createForUserAdmin(new Types.ObjectId(id), req?.body);
+    const result = await TodoService.createForUserAdmin(req.user.id, new Types.ObjectId(id), req?.body);
     res.status(HttpCode.CREATED).json({
       success: true,
       message: 'Todo created successfully',
       data: result,
     });
+  },
+);
+
+// @desc    Get my created todos by due date range (calendar)
+// @route   GET /api/admin/todos/calendar
+// @access  Private/Admin
+const getMyCreatedTodosCalendar: RequestHandler = AsyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { from, to } = req.query;
+    const fromDate = from ? new Date(String(from)) : new Date();
+    const toDate = to ? new Date(String(to)) : new Date();
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      res.status(HttpCode.BAD_REQUEST).json({ success: false, message: 'Invalid date range', data: null });
+      return;
+    }
+    const result = await TodoService.getMyCreatedTodosByDueRangeAdmin(req.user.id, fromDate, toDate);
+    res.status(HttpCode.OK).json({ success: true, message: '', data: result });
   },
 );
 
@@ -166,4 +183,5 @@ export default {
   removeAdmin,
   getAllUserTodosAdmin,
   createUserTodoAdmin,
+  getMyCreatedTodosCalendar,
 };
