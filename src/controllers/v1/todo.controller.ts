@@ -159,14 +159,15 @@ const createUserTodoAdmin: RequestHandler = AsyncHandler(
 // @access  Private/Admin
 const getMyCreatedTodosCalendar: RequestHandler = AsyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { from, to } = req.query;
+    const { from, to, includeLegacy } = req.query;
     const fromDate = from ? new Date(String(from)) : new Date();
     const toDate = to ? new Date(String(to)) : new Date();
     if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
       res.status(HttpCode.BAD_REQUEST).json({ success: false, message: 'Invalid date range', data: null });
       return;
     }
-    const result = await TodoService.getMyCreatedTodosByDueRangeAdmin(req.user.id, fromDate, toDate);
+    const includeLegacyFlag = includeLegacy === undefined ? true : String(includeLegacy) === '1' || String(includeLegacy).toLowerCase() === 'true';
+    const result = await TodoService.getMyCreatedTodosByDueRangeAdmin(req.user.id, fromDate, toDate, includeLegacyFlag);
     res.status(HttpCode.OK).json({ success: true, message: '', data: result });
   },
 );

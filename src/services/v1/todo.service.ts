@@ -90,12 +90,27 @@ const createForUserAdmin = async (creatorId: Types.ObjectId, userId: Types.Objec
   return createdTodo;
 };
 
-const getMyCreatedTodosByDueRangeAdmin = async (creatorId: Types.ObjectId, from: Date, to: Date) => {
-  // include tasks without dueDate? for calendar we focus on dueDate set
+const getMyCreatedTodosByDueRangeAdmin = async (
+  creatorId: Types.ObjectId,
+  from: Date,
+  to: Date,
+  includeLegacyWithoutCreator: boolean = true,
+) => {
+  const creatorFilter = includeLegacyWithoutCreator
+    ? {
+        $or: [
+          { createdBy: creatorId },
+          { createdBy: { $exists: false } },
+          { createdBy: null },
+        ],
+      }
+    : { createdBy: creatorId };
+
   const query = {
-    createdBy: creatorId,
+    ...creatorFilter,
     dueDate: { $gte: from, $lte: to },
   };
+
   const todos = await TodoRepository.getByQuery(query, '+user +createdBy', 'user createdBy');
   return todos;
 };
