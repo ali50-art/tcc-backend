@@ -20,6 +20,25 @@ const getLeaveById = async (id: Types.ObjectId) => {
 };
 
 const createLeave = async (userId: Types.ObjectId, data: any) => {
+  const startDate = new Date(data.startDate);
+  const endDate = new Date(data.endDate);
+
+  // Check overlapping leaves (pending or approved) for this user
+  const overlappingCount = await LeaveRepository.countByQuery({
+    user: userId,
+    status: { $in: [LeaveStatusEnum.pending, LeaveStatusEnum.approved] },
+    // Overlap condition: existing.start <= newEnd AND existing.end >= newStart
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
+  });
+
+  if (overlappingCount > 0) {
+    throw new ErrorHandler(
+      'Vous avez déjà une demande de congé sur cette période.',
+      HttpCode.BAD_REQUEST,
+    );
+  }
+
   const leave = await LeaveRepository.create({ ...data, user: userId, status: LeaveStatusEnum.pending });
   const user = await UserRepository.getById(userId);
 
