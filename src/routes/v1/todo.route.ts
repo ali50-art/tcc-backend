@@ -15,12 +15,12 @@ router
   .route('/todos')
   .get(
     Authorization.Authenticated,
-    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.admin]),
+    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.employee, RolesEnum.admin]),
     TodoController.getAll,
   )
   .post(
     Authorization.Authenticated,
-    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.admin]),
+    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.employee, RolesEnum.admin]),
     validator(TodoValidator.todoSchema),
     TodoController.create,
   );
@@ -29,18 +29,18 @@ router
   .route('/todos/:id')
   .get(
     Authorization.Authenticated,
-    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.admin]),
+    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.employee, RolesEnum.admin]),
     TodoController.getById,
   )
   .put(
     Authorization.Authenticated,
-    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.admin]),
+    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.employee, RolesEnum.admin]),
     validator(TodoValidator.todoSchema),
     TodoController.edit,
   )
   .delete(
     Authorization.Authenticated,
-    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.admin]),
+    AuthorizeRole.AuthorizeRole([RolesEnum.user, RolesEnum.employee, RolesEnum.admin]),
     TodoController.remove,
   );
 
@@ -77,6 +77,12 @@ router
     Authorization.Authenticated,
     AuthorizeRole.AuthorizeRole([RolesEnum.admin]),
     TodoController.getAllUserTodosAdmin,
+  )
+  .post(
+    Authorization.Authenticated,
+    AuthorizeRole.AuthorizeRole([RolesEnum.admin]),
+    validator(TodoValidator.todoSchema),
+    TodoController.createUserTodoAdmin,
   );
 
 export default router;

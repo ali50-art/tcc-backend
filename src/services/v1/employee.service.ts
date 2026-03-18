@@ -151,7 +151,8 @@ class EmployeeService {
       id: todo._id.toString(),
       title: todo.name,
       description: todo.description,
-      priority: 'medium', // Default priority, can be enhanced
+      dueDate: todo.dueDate,
+      priority: todo.slug === 'urgent' ? 'high' : 'medium',
       completed: todo.isConpleted || false,
     }));
   }

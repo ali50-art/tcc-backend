@@ -7,6 +7,8 @@ export const TODO_COLLECTION_NAME = 'todos';
 export default interface ITodo extends Document {
   name: string;
   description: string;
+  slug?: 'urgent' | 'normal';
+  dueDate?: Date;
   isConpleted?: boolean;
   user: object;
   createdAt?: Date;
@@ -21,6 +23,14 @@ const schema = new Schema<ITodo>(
     },
     description: {
       type: Schema.Types.String,
+    },
+    slug: {
+      type: Schema.Types.String,
+      enum: ['urgent', 'normal'],
+      default: 'normal',
+    },
+    dueDate: {
+      type: Schema.Types.Date,
     },
     isConpleted: {
       type: Schema.Types.Boolean,

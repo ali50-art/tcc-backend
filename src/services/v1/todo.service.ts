@@ -41,11 +41,25 @@ const getById = async (userId: Types.ObjectId, id: Types.ObjectId) => {
 const create = async (userId: Types.ObjectId, item: ITodo) => {
   // set current authentificated userid to item
   item.user = userId;
+  if (typeof item.isConpleted !== 'boolean') item.isConpleted = false;
+  if (!item.slug) (item as any).slug = 'normal';
 
   // create item
   const createdTodo = await TodoRepository.create(item);
 
   // return data
+  return createdTodo;
+};
+
+const createForUserAdmin = async (userId: Types.ObjectId, item: ITodo) => {
+  const user = await UserRepository.getById(userId);
+  if (!user) throw new ErrorHandler('user not found!', HttpCode.NOT_FOUND);
+
+  item.user = userId;
+  if (typeof item.isConpleted !== 'boolean') item.isConpleted = false;
+  if (!item.slug) (item as any).slug = 'normal';
+
+  const createdTodo = await TodoRepository.create(item);
   return createdTodo;
 };
 
@@ -183,6 +197,7 @@ export default {
   getAll,
   getById,
   create,
+  createForUserAdmin,
   edit,
   remove,
   getAllAdmin,

@@ -139,6 +139,21 @@ const getAllUserTodosAdmin: RequestHandler = AsyncHandler(
   },
 );
 
+// @desc    Create todo for a user (admin assigns task)
+// @route   POST /api/admin/users-todos/:id
+// @access  Private/Admin
+const createUserTodoAdmin: RequestHandler = AsyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { id } = req?.params;
+    const result = await TodoService.createForUserAdmin(new Types.ObjectId(id), req?.body);
+    res.status(HttpCode.CREATED).json({
+      success: true,
+      message: 'Todo created successfully',
+      data: result,
+    });
+  },
+);
+
 export default {
   getAll,
   getById,
@@ -150,4 +165,5 @@ export default {
   editAdmin,
   removeAdmin,
   getAllUserTodosAdmin,
+  createUserTodoAdmin,
 };
