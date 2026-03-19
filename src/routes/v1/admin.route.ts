@@ -9,6 +9,9 @@ import validator from '../../validators';
 import RoleValidator from '../../validators/role.validator';
 import RoleController from '../../controllers/v1/role.controller';
 import AdminController from '../../controllers/v1/admin.controller';
+import AttendanceController from '../../controllers/v1/attendance.controller';
+import multer from 'multer';
+import { multerConfig } from '../../utils/multer';
 import { RolesEnum } from '../../constants/constants';
 
 // Admin dashboard
@@ -24,6 +27,13 @@ router.get(
   Authorization.Authenticated,
   AuthorizeRole.AuthorizeRole([RolesEnum.admin]),
   AdminController.getAuditLogs,
+);
+
+// Attendance Excel upload from cron script
+router.post(
+  '/admin/attendance-upload',
+  multer(multerConfig).single('file'),
+  AttendanceController.uploadAttendance,
 );
 
 // Role management
