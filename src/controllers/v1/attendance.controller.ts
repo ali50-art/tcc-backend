@@ -9,6 +9,8 @@ import * as XLSX from 'xlsx';
 import UserRepository from '../../database/mongodb/repositories/user.repository';
 import { RolesEnum } from '../../constants/constants';
 import { sendMail } from '../../utils/sendMail';
+import { AttendanceSchedule } from '../../database/mongodb/models/attendanceSchedule.model';
+import { AttendanceHistory } from '../../database/mongodb/models/attendanceHistory.model';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -33,6 +35,42 @@ const DEFAULT_SCHEDULE: WorkSchedule = {
   breakEnd: '14:00',
   graceMinutes: 0,
 };
+
+async function getOrCreateSchedule(): Promise<WorkSchedule> {
+  const row = await AttendanceSchedule.findOneAndUpdate(
+    { key: 'default' },
+    {
+      $setOnInsert: {
+        key: 'default',
+        ...DEFAULT_SCHEDULE,
+      },
+    },
+    { upsert: true, new: true }
+  );
+
+  const schedule: WorkSchedule = {
+    workStart: row?.workStart || DEFAULT_SCHEDULE.workStart,
+    workEnd: row?.workEnd || DEFAULT_SCHEDULE.workEnd,
+    breakStart: row?.breakStart || DEFAULT_SCHEDULE.breakStart,
+    breakEnd: row?.breakEnd || DEFAULT_SCHEDULE.breakEnd,
+    graceMinutes:
+      typeof row?.graceMinutes === 'number' ? row.graceMinutes : DEFAULT_SCHEDULE.graceMinutes,
+  };
+  return schedule;
+}
+
+async function resolveDocumentOwner(userIdRaw: any): Promise<Types.ObjectId | null> {
+  if (userIdRaw && Types.ObjectId.isValid(userIdRaw)) {
+    return new Types.ObjectId(userIdRaw);
+  }
+
+  // fallback: first admin/rh user
+  const fallbackUser = await UserRepository.getOneByQuery({
+    role: { $in: [RolesEnum.admin, RolesEnum.rh] },
+  });
+  if (fallbackUser?._id) return fallbackUser._id as Types.ObjectId;
+  return null;
+}
 
 async function streamToBuffer(stream: any): Promise<Buffer> {
   const chunks: Uint8Array[] = [];
@@ -139,13 +177,7 @@ export const uploadAttendance = AsyncHandler(async (req: Request, res: Response)
     return;
   }
 
-  const schedule: WorkSchedule = {
-    workStart: (req.body?.workStart as string) || DEFAULT_SCHEDULE.workStart,
-    workEnd: (req.body?.workEnd as string) || DEFAULT_SCHEDULE.workEnd,
-    breakStart: (req.body?.breakStart as string) || DEFAULT_SCHEDULE.breakStart,
-    breakEnd: (req.body?.breakEnd as string) || DEFAULT_SCHEDULE.breakEnd,
-    graceMinutes: Number(req.body?.graceMinutes ?? DEFAULT_SCHEDULE.graceMinutes) || 0,
-  };
+  const schedule: WorkSchedule = await getOrCreateSchedule();
 
   // Validate schedule format (fallback to defaults if invalid)
   if (!parseHHmm(schedule.workStart)) schedule.workStart = DEFAULT_SCHEDULE.workStart;
@@ -154,10 +186,16 @@ export const uploadAttendance = AsyncHandler(async (req: Request, res: Response)
   if (!parseHHmm(schedule.breakEnd)) schedule.breakEnd = DEFAULT_SCHEDULE.breakEnd;
   if (schedule.graceMinutes < 0 || schedule.graceMinutes > 180) schedule.graceMinutes = DEFAULT_SCHEDULE.graceMinutes;
 
-  // Optionally associate to a user; for now store as system document (no specific user)
-  const systemUserId = (req.body?.userId && Types.ObjectId.isValid(req.body.userId))
-    ? new Types.ObjectId(req.body.userId)
-    : undefined;
+  // Document model requires user -> resolve explicit userId or fallback admin/rh
+  const systemUserId = await resolveDocumentOwner(req.body?.userId);
+  if (!systemUserId) {
+    res.status(HttpCode.BAD_REQUEST).json({
+      success: false,
+      message: "Aucun utilisateur admin/rh trouvé pour associer le document.",
+      data: null,
+    });
+    return;
+  }
 
   const doc = await DocumentRepository.create({
     user: systemUserId,
@@ -371,6 +409,19 @@ export const uploadAttendance = AsyncHandler(async (req: Request, res: Response)
     processing = { ok: false, reason: e?.message || 'xlsx_processing_failed' };
   }
 
+  // Save pointage history in DB for traceability
+  await AttendanceHistory.create({
+    uploadedBy: systemUserId,
+    user: systemUserId,
+    document: doc._id,
+    file: doc.file,
+    fileName: doc.name,
+    fileSize: doc.size,
+    mimeType: doc.mimeType,
+    schedule,
+    processing,
+  });
+
   res.status(HttpCode.CREATED).json({
     success: true,
     message: 'Attendance file uploaded',
@@ -378,7 +429,110 @@ export const uploadAttendance = AsyncHandler(async (req: Request, res: Response)
   });
 });
 
+// @desc    Get attendance history list (admin/rh)
+// @route   GET /api/admin/attendance-history
+// @access  Private (admin/rh)
+export const getAttendanceHistory = AsyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const page = Math.max(1, Number(req.query?.page || 1));
+  const pageSize = Math.min(100, Math.max(1, Number(req.query?.pageSize || 20)));
+
+  const [items, total] = await Promise.all([
+    AttendanceHistory.find({})
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .populate('uploadedBy', 'name email role')
+      .populate('document', 'name file createdAt'),
+    AttendanceHistory.countDocuments({}),
+  ]);
+
+  res.status(HttpCode.OK).json({
+    success: true,
+    message: '',
+    data: {
+      docs: items,
+      meta: {
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+      },
+    },
+  });
+});
+
+// @desc    Get attendance schedule (admin/rh)
+// @route   GET /api/admin/attendance-schedule
+// @access  Private (admin/rh)
+export const getAttendanceSchedule = AsyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const schedule = await getOrCreateSchedule();
+  res.status(HttpCode.OK).json({
+    success: true,
+    message: '',
+    data: schedule,
+  });
+});
+
+// @desc    Update attendance schedule (admin/rh)
+// @route   PUT /api/admin/attendance-schedule
+// @access  Private (admin/rh)
+export const updateAttendanceSchedule = AsyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const payload: WorkSchedule = {
+    workStart: String(req.body?.workStart || '').trim(),
+    workEnd: String(req.body?.workEnd || '').trim(),
+    breakStart: String(req.body?.breakStart || '').trim(),
+    breakEnd: String(req.body?.breakEnd || '').trim(),
+    graceMinutes: Number(req.body?.graceMinutes ?? 0),
+  };
+
+  if (!parseHHmm(payload.workStart) || !parseHHmm(payload.workEnd) || !parseHHmm(payload.breakStart) || !parseHHmm(payload.breakEnd)) {
+    res.status(HttpCode.BAD_REQUEST).json({
+      success: false,
+      message: "Format d'heure invalide (HH:mm attendu).",
+      data: null,
+    });
+    return;
+  }
+
+  if (Number.isNaN(payload.graceMinutes) || payload.graceMinutes < 0 || payload.graceMinutes > 180) {
+    res.status(HttpCode.BAD_REQUEST).json({
+      success: false,
+      message: 'graceMinutes doit être entre 0 et 180.',
+      data: null,
+    });
+    return;
+  }
+
+  const updated = await AttendanceSchedule.findOneAndUpdate(
+    { key: 'default' },
+    {
+      $set: {
+        ...payload,
+        updatedBy: req?.user?._id?.toString() || '',
+      },
+      $setOnInsert: { key: 'default' },
+    },
+    { upsert: true, new: true }
+  );
+
+  res.status(HttpCode.OK).json({
+    success: true,
+    message: 'Horaires mis à jour.',
+    data: {
+      workStart: updated?.workStart || payload.workStart,
+      workEnd: updated?.workEnd || payload.workEnd,
+      breakStart: updated?.breakStart || payload.breakStart,
+      breakEnd: updated?.breakEnd || payload.breakEnd,
+      graceMinutes:
+        typeof updated?.graceMinutes === 'number' ? updated.graceMinutes : payload.graceMinutes,
+    },
+  });
+});
+
 export default {
   uploadAttendance,
+  getAttendanceHistory,
+  getAttendanceSchedule,
+  updateAttendanceSchedule,
 };
 

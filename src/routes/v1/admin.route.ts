@@ -35,6 +35,26 @@ router.post(
   multer(multerConfig).single('file'),
   AttendanceController.uploadAttendance,
 );
+router.get(
+  '/admin/attendance-history',
+  Authorization.Authenticated,
+  AuthorizeRole.AuthorizeRole([RolesEnum.admin, RolesEnum.rh]),
+  AttendanceController.getAttendanceHistory,
+);
+
+// Attendance schedule (set in backend)
+router
+  .route('/admin/attendance-schedule')
+  .get(
+    Authorization.Authenticated,
+    AuthorizeRole.AuthorizeRole([RolesEnum.admin, RolesEnum.rh]),
+    AttendanceController.getAttendanceSchedule,
+  )
+  .put(
+    Authorization.Authenticated,
+    AuthorizeRole.AuthorizeRole([RolesEnum.admin, RolesEnum.rh]),
+    AttendanceController.updateAttendanceSchedule,
+  );
 
 // Role management
 router
