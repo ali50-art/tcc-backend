@@ -9,7 +9,8 @@
     "dev": "npm run start",
     "build": "rimraf ./dist && tsc",
     "prod": "cross-env NODE_ENV=prod node dist/server.js",
-    "seed:employee": "npm run build && node dist/seed/seedEmployeeData.js"
+    "seed:employee": "npm run build && node dist/seed/seedEmployeeData.js",
+    "seed:tcc-users": "npm run build && node dist/seed/seedTccUsers.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.996.0",
@@ -42,6 +43,7 @@
     "swagger-ui-express": "^4.6.0",
     "winston": "^3.8.2",
     "winston-daily-rotate-file": "^4.7.1",
+    "xlsx": "^0.18.5",
     "xss-clean": "^0.1.1"
   },
   "devDependencies": {

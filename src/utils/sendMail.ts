@@ -16,7 +16,7 @@ export const sendMail = (email: string, subject: string, body: string) => {
   });
 
   const mailOptions = {
-    from: `"TCC CenterDesk" <${process.env.MAILER_EMAIL}>`, // Display name + email
+    from: `"TCC Cortex" <${process.env.MAILER_EMAIL}>`, // Display name + email
     to: email,
     subject: subject,
     html: body,

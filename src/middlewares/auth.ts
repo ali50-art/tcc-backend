@@ -13,7 +13,7 @@ const Authenticated = AsyncHandler(async (req: Request, res: Response, next: Nex
   const authToken = req?.headers?.authorization;
   const token = authToken && authToken.split(' ')[1];
 
-  if (!token || !refreshToken) {
+  if (!token) {
     return next(new ErrorHandler('Login first to access this resource.', HttpCode.UNAUTHORIZED));
   }
 

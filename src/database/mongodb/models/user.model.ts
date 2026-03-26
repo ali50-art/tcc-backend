@@ -83,7 +83,8 @@ const schema = new Schema<IUser>(
     },
     matricule: {
       type: String,
-      default: '',
+      default: null,
+      index: true,
     },
     hireDate: {
       type: Date,
